@@ -15,7 +15,8 @@
       "!{projectRoot}/test-setup.[jt]s"
     ],
     "sharedGlobals": [
-      "{workspaceRoot}/.github/workflows/ci.yml"
+      "{workspaceRoot}/.github/workflows/ci.yml",
+      "{workspaceRoot}/packages/**/*"
     ]
   },
   "nxCloudId": "6aa8077c75c12b301aa3d2de",

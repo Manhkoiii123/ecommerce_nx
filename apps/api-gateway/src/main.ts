@@ -31,7 +31,6 @@ const limiter = rateLimit({
   message: { error: "Too many requests, please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: any) => req.ip,
 });
 
 app.use(limiter);
