@@ -90,7 +90,7 @@ export const verifyOtp = async (
 
   if (storedOtp !== otp) {
     if (failedAttempts >= 2) {
-      await redis.set(`otp_lock:${email}`, "locked"Manhtran, "EX", 60 * 30); // locked for 30 minutes
+      await redis.set(`otp_lock:${email}`, "locked", "EX", 60 * 30); // locked for 30 minutes
       await redis.del(`otp:${email}`, failedAttemptsKey);
       return next(
         new ValidationError(

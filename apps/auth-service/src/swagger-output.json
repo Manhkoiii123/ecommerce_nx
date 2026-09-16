@@ -20,13 +20,10 @@
               "type": "object",
               "properties": {
                 "email": {
-                  "example": "manhtranduc0202@gmail.com"
+                  "example": "any"
                 },
                 "name": {
-                  "example": "Manh tran"
-                },
-                "password": {
-                  "example": "Manhtran"
+                  "example": "any"
                 }
               }
             }
@@ -50,16 +47,16 @@
               "type": "object",
               "properties": {
                 "email": {
-                  "example": "manhtranduc0202@gmail.com"
+                  "example": "any"
                 },
                 "otp": {
-                  "example": "1234"
+                  "example": "any"
                 },
                 "password": {
-                  "example": "123456"
+                  "example": "any"
                 },
                 "name": {
-                  "example": "Manh tran"
+                  "example": "any"
                 }
               }
             }
@@ -68,6 +65,33 @@
         "responses": {
           "201": {
             "description": "Created"
+          }
+        }
+      }
+    },
+    "/login-user": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "example": "any"
+                },
+                "password": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
