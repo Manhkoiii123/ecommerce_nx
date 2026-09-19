@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useMutation } from "@tanstack/react-query";
+import axios, { AxiosError } from "axios";
 
 type FormData = {
   email: string;
@@ -13,7 +15,7 @@ type FormData = {
 
 const Page = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [serverError, serServerError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
   const {
@@ -22,7 +24,31 @@ const Page = () => {
     formState: { errors },
   } = useForm<FormData>();
 
-  const onSubmit = (data: FormData) => {};
+  const loginMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/login-user`,
+        data,
+        { withCredentials: true },
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      setServerError(null);
+      router.push("/");
+    },
+    onError: (error: AxiosError<{ message: string }>) => {
+      const errorMessage =
+        error.response?.data?.message || error.message || "Invalid credentials";
+      setServerError(errorMessage);
+    },
+  });
+
+  const onSubmit = (data: FormData) => {
+    setServerError(null);
+    loginMutation.mutate(data);
+  };
+
   return (
     <div className="w-full py-10 min-h-[85vh] bg-[#f1f1f1]">
       <h1 className="text-4xl font-poppins font-semibold text-black text-center">
@@ -51,7 +77,7 @@ const Page = () => {
           <form onSubmit={handleSubmit(onSubmit)}>
             <label className="block text-gray-700 mb-1">Email</label>
             <input
-              type="text"
+              type="email"
               placeholder="manhtranduc0202@gmail.com"
               className="w-full p-2 border border-gray-300 outline-0 !rounded mb-1"
               {...register("email", {
@@ -88,12 +114,12 @@ const Page = () => {
               >
                 {passwordVisible ? <Eye /> : <EyeOff />}
               </button>
-              {errors.password && (
-                <p className="text-red-500 text-sm">
-                  {String(errors.password.message)}
-                </p>
-              )}
             </div>
+            {errors.password && (
+              <p className="text-red-500 text-sm">
+                {String(errors.password.message)}
+              </p>
+            )}
             <div className="flex justify-between items-center my-4">
               <label className="flex items-center text-gray-600">
                 <input
@@ -110,9 +136,10 @@ const Page = () => {
             </div>
             <button
               type="submit"
+              disabled={loginMutation.isPending}
               className="w-full text-lg cursor-pointer bg-black text-white py-2 !rounded-lg"
             >
-              Login
+              {loginMutation.isPending ? "Logging in..." : "Login"}
             </button>
             {serverError && (
               <p className="text-red-500 text-sm mt-2">{serverError}</p>
