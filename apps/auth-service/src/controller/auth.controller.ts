@@ -11,7 +11,7 @@ import {
 import prisma from "@packages/libs/prisma";
 import { ValidationError } from "@packages/error-handler";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt, { JsonWebTokenError } from "jsonwebtoken";
 import { setCookie } from "../utils/cookies/setCookie";
 
 // user registration
@@ -178,6 +178,65 @@ export const userResetPassword = async (
       data: { password: await bcrypt.hash(newPassword, 10) },
     });
     res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// refresh token
+
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) {
+      return next(new ValidationError("Refresh token is required"));
+    }
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET!,
+    ) as { id: string; role: string };
+    if (!decoded || !decoded.id || !decoded.role) {
+      return new JsonWebTokenError("Invalid refresh token");
+    }
+    let account;
+    // if (decoded.role === "user") {
+    account = await prisma.users.findUnique({
+      where: { id: decoded.id },
+    });
+    // } else if (decoded.role === "admin") {
+    //   account = await prisma.admins.findUnique({
+    //     where: { id: decoded.id },
+    //   });
+    // } else {
+    //   return next(new ValidationError("Invalid role"));
+    // }
+    if (!account) {
+      return next(new JsonWebTokenError("Account not found"));
+    }
+    const newAccessToken = jwt.sign(
+      { id: account.id, role: decoded.role },
+      process.env.ACCESS_TOKEN_SECRET!,
+      {
+        expiresIn: "15m",
+      },
+    );
+    setCookie(res, "access_token", newAccessToken);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// get logged in user
+
+export const getUser = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user;
+    res.status(200).json({ success: true, user });
   } catch (error) {
     return next(error);
   }
