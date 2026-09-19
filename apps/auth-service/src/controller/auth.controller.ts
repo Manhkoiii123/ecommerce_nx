@@ -236,7 +236,7 @@ export const refreshToken = async (
 export const getUser = async (req: any, res: Response, next: NextFunction) => {
   try {
     const user = req.user;
-    res.status(200).json({ success: true, user });
+    res.status(200).json(user);
   } catch (error) {
     return next(error);
   }
