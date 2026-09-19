@@ -7,6 +7,7 @@ import React, { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
+import toast from "react-hot-toast";
 
 type FormData = {
   name: string;
@@ -50,12 +51,18 @@ const Page = () => {
       );
       return response.data;
     },
-    onSuccess: (_, formData) => {
+    onSuccess: (data, formData) => {
       setUserData(formData);
       setShowOtp(true);
       setCanResend(false);
       setTimer(60);
       startResendTimer();
+      toast.success(data?.message || "OTP sent to your email");
+    },
+    onError: (error: AxiosError<{ message: string }>) => {
+      toast.error(
+        error.response?.data?.message || error.message || "Signup failed",
+      );
     },
   });
 
@@ -68,8 +75,14 @@ const Page = () => {
       );
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      toast.success(data?.message || "Account created successfully");
       router.push("/login");
+    },
+    onError: (error: AxiosError<{ message: string }>) => {
+      toast.error(
+        error.response?.data?.message || error.message || "Invalid OTP",
+      );
     },
   });
 
@@ -238,13 +251,6 @@ const Page = () => {
                   <>`Resend OTP in {timer}s`</>
                 )}
               </p>
-              {verifyOtpMutation.isError &&
-                verifyOtpMutation.error instanceof AxiosError && (
-                  <p className="text-red-500 text-sm mt-2">
-                    {verifyOtpMutation.error.response?.data.message ||
-                      verifyOtpMutation.error.message}
-                  </p>
-                )}
             </div>
           )}
         </div>

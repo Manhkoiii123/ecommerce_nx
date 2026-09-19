@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
+import toast from "react-hot-toast";
 
 type FormData = {
   email: string;
@@ -15,7 +16,6 @@ type FormData = {
 
 const Page = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
   const {
@@ -33,19 +33,18 @@ const Page = () => {
       );
       return response.data;
     },
-    onSuccess: () => {
-      setServerError(null);
+    onSuccess: (data) => {
+      toast.success(data?.message || "Login successful");
       router.push("/");
     },
     onError: (error: AxiosError<{ message: string }>) => {
-      const errorMessage =
-        error.response?.data?.message || error.message || "Invalid credentials";
-      setServerError(errorMessage);
+      toast.error(
+        error.response?.data?.message || error.message || "Invalid credentials",
+      );
     },
   });
 
   const onSubmit = (data: FormData) => {
-    setServerError(null);
     loginMutation.mutate(data);
   };
 
@@ -141,9 +140,6 @@ const Page = () => {
             >
               {loginMutation.isPending ? "Logging in..." : "Login"}
             </button>
-            {serverError && (
-              <p className="text-red-500 text-sm mt-2">{serverError}</p>
-            )}
           </form>
         </div>
       </div>
