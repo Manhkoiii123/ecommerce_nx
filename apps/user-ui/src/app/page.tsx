@@ -1,3 +1,8 @@
-export default function Index() {
-  return <div className="h-[200vh]"></div>;
-}
+import React from "react";
+
+type Props = {};
+
+const Page = (props: Props) => {
+  return <div>page</div>;
+};
+export default Page;
