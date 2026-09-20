@@ -13,6 +13,7 @@ import { ValidationError } from "@packages/error-handler";
 import bcrypt from "bcryptjs";
 import jwt, { JsonWebTokenError } from "jsonwebtoken";
 import { setCookie } from "../utils/cookies/setCookie";
+import Stripe from "stripe";
 
 // user registration
 export const userRegistration = async (
@@ -340,3 +341,126 @@ export const creatShop = async (
 };
 
 // create stripe connect account link
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-02-24.acacia",
+});
+
+export const createStripeConnectAccountLink = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { sellerId } = req.body;
+    if (!sellerId) {
+      return next(new ValidationError("Seller ID is required"));
+    }
+    const seller = await prisma.sellers.findUnique({
+      where: { id: sellerId },
+    });
+    if (!seller) {
+      return next(new ValidationError("Seller not found"));
+    }
+    // VN (and some countries) cannot request card_payments — transfers only (cross-border payouts)
+    const capabilities: Stripe.AccountCreateParams.Capabilities =
+      seller.country === "VN"
+        ? { transfers: { requested: true } }
+        : {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          };
+
+    const accountParams: Stripe.AccountCreateParams = {
+      type: "express",
+      email: seller.email,
+      country: seller.country,
+      capabilities,
+    };
+
+    // Recipient agreement required for payout-only countries like VN
+    if (seller.country === "VN") {
+      accountParams.tos_acceptance = {
+        service_agreement: "recipient",
+      };
+    }
+
+    const account = await stripe.accounts.create(accountParams);
+    await prisma.sellers.update({
+      where: { id: sellerId },
+      data: { stripeId: account.id },
+    });
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `http://localhost:3000/success`,
+      return_url: `http://localhost:3000/success`,
+      type: "account_onboarding",
+    });
+    res.status(200).json({ url: accountLink.url });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// login seller
+export const loginSeller = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return next(new ValidationError("All fields are required"));
+    }
+    const seller = await prisma.sellers.findUnique({
+      where: { email },
+    });
+    if (!seller) {
+      return next(new ValidationError("Seller not found"));
+    }
+    const isMatch = await bcrypt.compare(password, seller.password!);
+    if (!isMatch) {
+      return next(new ValidationError("Invalid credentials"));
+    }
+    const accessToken = jwt.sign(
+      { id: seller.id, role: "seller" },
+      process.env.ACCESS_TOKEN_SECRET!,
+      {
+        expiresIn: "15m",
+      },
+    );
+    const refreshToken = jwt.sign(
+      { id: seller.id, role: "seller" },
+      process.env.REFRESH_TOKEN_SECRET!,
+      {
+        expiresIn: "7d",
+      },
+    );
+    setCookie(res, "seller-access-token", accessToken);
+    setCookie(res, "seller-refresh-token", refreshToken);
+    res.status(200).json({
+      message: "Login successful",
+      user: {
+        id: seller.id,
+        email: seller.email,
+        name: seller.name,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getSeller = async (
+  req: any,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const seller = req.seller;
+    res.status(200).json(seller);
+  } catch (error) {
+    return next(error);
+  }
+};

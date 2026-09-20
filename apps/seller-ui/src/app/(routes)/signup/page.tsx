@@ -8,6 +8,8 @@ import axios, { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { countries } from "../../../utils/countries";
 import Link from "next/link";
+import CreateShop from "../../../shared/modules/auth/create-shop";
+import StripeLogo from "../../../assets/svgs/stripe-logo";
 
 const Page = () => {
   const [activeStep, setActiveStep] = useState(1);
@@ -18,6 +20,7 @@ const Page = () => {
   const [sellerData, setSellerData] = useState<FormData | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [showOtp, setShowOtp] = useState(false);
+  const [sellerId, setSellerId] = useState("");
   const router = useRouter();
   const {
     register,
@@ -41,7 +44,7 @@ const Page = () => {
   const signupMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/user-registration`,
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/seller-registration`,
         data,
       );
       return response.data;
@@ -65,14 +68,14 @@ const Page = () => {
     mutationFn: async () => {
       if (!sellerData) return;
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/verify-user`,
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/verify-seller`,
         { ...sellerData, otp: otp.join("") },
       );
       return response.data;
     },
     onSuccess: (data) => {
-      toast.success(data?.message || "Account created successfully");
-      router.push("/login");
+      setSellerId(data?.seller?.id);
+      setActiveStep(2);
     },
     onError: (error: AxiosError<{ message: string }>) => {
       toast.error(
@@ -108,6 +111,18 @@ const Page = () => {
     if (!sellerData) return;
     setOtp(["", "", "", ""]);
     signupMutation.mutate(sellerData);
+  };
+
+  const connectStripe = async () => {
+    try {
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/create-stripe-link`,
+        { sellerId },
+      );
+      if (res.data.url) {
+        window.location.href = res.data.url;
+      }
+    } catch (error) {}
   };
 
   return (
@@ -183,16 +198,9 @@ const Page = () => {
                   {...register("phone_number", {
                     required: "Phone number is required",
                     pattern: {
-                      value: /^\+?[1-9]\d{1,14}$/,
-                      message: "Invalid phone number format",
-                    },
-                    minLength: {
-                      value: 10,
-                      message: "Phone number must be at least 10 digits",
-                    },
-                    maxLength: {
-                      value: 15,
-                      message: "Phone number cannot exceed 15 digits",
+                      value: /^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/,
+                      message:
+                        "Invalid Vietnamese phone number (e.g. 0912345678 or +84912345678)",
                     },
                   })}
                 />
@@ -312,6 +320,21 @@ const Page = () => {
               </div>
             )}
           </>
+        )}
+        {activeStep === 2 && (
+          <CreateShop sellerId={sellerId} setActiveStep={setActiveStep} />
+        )}
+        {activeStep === 3 && (
+          <div className="text-center">
+            <h3 className="text-2xl font-semibold">Withdraw method</h3>
+            <br />
+            <button
+              onClick={connectStripe}
+              className="w-full m-auto flex items-center justify-center gap-3 text-lg bg-[#334155] text-white py-2 rounded-lg"
+            >
+              Connect Stripe <StripeLogo />
+            </button>
+          </div>
         )}
       </div>
     </div>
