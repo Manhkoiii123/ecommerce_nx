@@ -120,12 +120,15 @@ export const handleForgotPassword = async (
       return next(new ValidationError("Email is required"));
     }
     const user =
-      userType === "user" &&
-      (await prisma.users.findUnique({
-        where: { email },
-      }));
+      userType === "user"
+        ? await prisma.users.findUnique({
+            where: { email },
+          })
+        : await prisma.sellers.findUnique({
+            where: { email },
+          });
     if (!user) {
-      return next(new ValidationError("User not found"));
+      return next(new ValidationError(`${userType} not found`));
     }
     // check otp restrictions
     await checkOtpRestrictions(email, next);
