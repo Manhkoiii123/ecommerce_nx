@@ -4,9 +4,8 @@ import cors from "cors";
 import proxy from "express-http-proxy";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
-import swaggerUi from "swagger-ui-express";
-import axios from "axios";
 import cookieParser from "cookie-parser";
+import initialSiteConfig from "./libs/initialSiteConfig";
 
 const app = express();
 app.use(
@@ -46,10 +45,13 @@ app.get("/gateway-health", (req, res) => {
   res.send({ message: "Welcome to api-gateway!" });
 });
 
+app.use("/product", proxy("http://localhost:6002"));
 app.use("/", proxy("http://localhost:6001")); // truy cập auth service (/8080/ => sẽ chuyển hướng đến /6001)
 
 const port = process.env.PORT || 8080;
 const server = app.listen(port, () => {
-  console.log(`Listening at http://localhost:${port}/api`);
+  try {
+    initialSiteConfig();
+  } catch (error) {}
 });
 server.on("error", console.error);
